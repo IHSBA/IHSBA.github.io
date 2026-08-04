@@ -1,0 +1,38 @@
+{
+  "_comment": "League/park context needed for wOBA, wRC+ and WAR. These are PLACEHOLDER values (roughly MLB-shaped) until real league-wide totals for this school's league are available. Swap them out once that data exists -- nothing in advanced-stats.js should ever need to change, only these numbers.",
+
+  "wOBAWeights": {
+    "_comment": "Linear-weight run values per event, FanGraphs 'Guts!' style. wBB excludes intentional walks (uBB only). Source: FanGraphs wOBA glossary (https://library.fangraphs.com/offense/woba/).",
+    "wBB": 0.69,
+    "wHBP": 0.72,
+    "w1B": 0.89,
+    "w2B": 1.27,
+    "w3B": 1.62,
+    "wHR": 2.10
+  },
+
+  "wOBAScale": 1.15,
+  "leagueWOBA": 0.320,
+  "leagueRunsPerPA": 0.115,
+  "runsPerWin": 10,
+
+  "replacementRunsPer600PA": 20,
+  "leagueAdjustmentRuns": 0,
+  "parkFactor": 1.0,
+
+  "positionalAdjustmentsPer600PA": {
+    "_comment": "FanGraphs-style defensive positional adjustments (runs per 600 PA). Used only if a player's position is known.",
+    "C": 12.5,
+    "SS": 7.5,
+    "2B": 2.5,
+    "3B": 2.5,
+    "CF": 2.5,
+    "LF": -7.5,
+    "RF": -7.5,
+    "1B": -12.5,
+    "DH": -17.5
+  },
+
+  "baserunningRunsPerSB": 0.2,
+  "baserunningRunsPerCS": -0.4
+}
