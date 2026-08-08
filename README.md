@@ -98,14 +98,27 @@ until one exists.
 
 ## Build & deploy (GitHub Pages)
 
-```bash
-npm run build     # outputs to dist/
-npm run deploy    # builds, then publishes dist/ to the gh-pages branch
-```
+**Primary method: GitHub Actions** (`.github/workflows/deploy.yml`).
+Every push to `master` builds the app on GitHub's servers and deploys
+it automatically — no local git credentials involved, so it isn't
+affected by local push-permission issues.
 
-`npm run deploy` uses the `gh-pages` package. After the first deploy,
-make sure the repo's Settings → Pages → Source is set to the
-`gh-pages` branch (root).
+One-time setup:
+1. Repo → Settings → Pages → Build and deployment → Source → **GitHub
+   Actions**.
+2. Repo → Settings → Secrets and variables → Actions → add repository
+   secrets `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`
+   (same values as your local `.env`; the publishable key is safe to
+   expose, this is just how the Actions build step gets them).
+
+After that, `git push origin master` alone triggers a deploy — check
+progress under the repo's **Actions** tab.
+
+**Fallback method**: `npm run deploy` (uses the `gh-pages` package to
+build and push `dist/` straight to a `gh-pages` branch from your
+machine). Only useful if you deliberately switch Pages back to "Deploy
+from a branch: gh-pages" — not needed if you're using the Actions
+workflow above.
 
 The app uses `HashRouter` (routes look like `/#/players/1`) instead of
 `BrowserRouter`, because GitHub Pages is a static host with no
