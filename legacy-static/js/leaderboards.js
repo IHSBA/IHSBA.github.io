@@ -55,6 +55,9 @@ UI.boot('leaders', function () {
     }),
   ]);
 
+  const podium = el('div', { class: 'podium', 'data-reveal': '' });
+  page.append(podium);
+
   page.append(chipBar, qualNote);
   const wrap = el('div', { class: 'table-wrap', 'data-reveal': '' });
   page.append(wrap);
@@ -62,6 +65,31 @@ UI.boot('leaders', function () {
   function value(s, key) {
     if (key === 'name') return s.player.nameEn || s.player.name;
     return s.totals[key] || 0;
+  }
+
+  function playerAvatar(p, cls) {
+    return p.photo
+      ? el('div', { class: cls }, [el('img', { src: p.photo, alt: p.name, loading: 'lazy' })])
+      : el('div', { class: cls, text: UI.initials(p.nameEn || p.name) });
+  }
+
+  function renderPodium(list) {
+    podium.innerHTML = '';
+    const top3 = list.slice(0, 3);
+    if (!top3.length) return;
+    podium.append(...top3.map((s, idx) => {
+      const place = idx + 1;
+      const rate = rateKeys.has(sortKey);
+      const val = rate ? Stats.fmtRate(s.totals[sortKey]) : String(s.totals[sortKey] || 0);
+      return el('a', { class: `podium-card rank-${place}`, href: `player.html?id=${s.player.id}` }, [
+        el('div', { class: 'podium-rank num', text: String(place) }),
+        playerAvatar(s.player, 'avatar podium-avatar'),
+        el('div', { class: 'podium-name', text: s.player.nameEn || s.player.name }),
+        el('div', { class: 'podium-en', text: s.player.name }),
+        el('div', { class: 'podium-val num', text: val }),
+        el('div', { class: 'podium-stat', text: sortKey }),
+      ]);
+    }));
   }
 
   function render() {
@@ -81,6 +109,8 @@ UI.boot('leaders', function () {
       return (value(b, sortKey) - value(a, sortKey)) * (sortDir === -1 ? 1 : -1);
     });
 
+    renderPodium(list.filter((s) => (rateKeys.has(sortKey) ? qualified(s) : true)));
+
     const thead = el('thead', {}, [el('tr', {}, cols.map(([label, key, isNum]) => {
       const active = key === sortKey;
       return el('th', {
@@ -95,9 +125,10 @@ UI.boot('leaders', function () {
         cols.map(([_, key]) => {
           if (key === 'name') {
             const unq = rateKeys.has(sortKey) && !qualified(s);
-            return el('td', {}, [
+            return el('td', { class: 'name-cell' }, [
               el('span', { class: 'num', style: 'color:var(--faint);margin-right:.5rem', text: String(idx + 1) }),
-              (s.player.nameEn || s.player.name) + (unq ? ' *' : ''),
+              playerAvatar(s.player, 'avatar avatar-xs'),
+              el('span', { text: (s.player.nameEn || s.player.name) + (unq ? ' *' : '') }),
             ]);
           }
           if (rateKeys.has(key)) {

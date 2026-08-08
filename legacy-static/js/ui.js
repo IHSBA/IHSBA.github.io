@@ -106,7 +106,6 @@ const UI = (function () {
     const header = el("header", { class: "site-header" }, [
       el("div", { class: "nav-inner container" }, [
         el("a", { href: "index.html", class: "brand" }, [
-          el("span", { class: "brand-mark", text: "⚾" }),
           el("span", { class: "brand-text" }, [
             el("strong", { text: "IHSBA" }),
             el("small", {

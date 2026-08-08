@@ -34,7 +34,7 @@ UI.boot('home', function () {
     el('div', { class: 'container' }, [
       el('p', { class: 'eyebrow', text: (school ? school.name : '') + ' · ' + (school ? school.season : '') + ' SEASON' }),
       el('h1', { html: 'International High School<br>Baseball <span class="acc">Analytics</span>' }),
-      el('p', { class: 'lede', text: 'Raw stats entered per game are automatically turned into AVG, OBP, SLG, and OPS. Every player, every game, every ranking, in one place.' }),
+      el('p', { class: 'lede', text: 'A comprehensive sabermetrics platform that helps high school baseball players track performance, discover strengths, and reach their full potential.' }),
       el('div', { class: 'record-strip' }, [
         recStat('Record', `${record.W}-${record.L}-${record.T}`),
         recStat('Win %', recPct),
@@ -62,10 +62,10 @@ UI.boot('home', function () {
   const gamesById = new Map(games.map((g) => [g.id, g]));
   const teamSeasons = Stats.buildSeasons(lines, gamesById, school, { pos: 'TEAM' });
   const teamMajorRows = Stats.majorRecordRows(teamSeasons).map((row) => AdvancedStats.compute(row, null));
-  const majorRecordSection = el('section', { class: 'section' }, [
+  const majorRecordSection = el('section', { class: 'section major-records-section' }, [
     el('div', { class: 'container' }, [
-      el('div', { class: 'section-head' }, [
-        el('div', {}, [el('p', { class: 'eyebrow', text: 'Team' }), el('h2', { text: 'Major Records' })]),
+      el('div', { class: 'section-head major-records-head' }, [
+        el('div', {}, [el('p', { class: 'eyebrow', text: 'Team' }), el('h2', { class: 'major-records-title', text: 'Major Records' })]),
       ]),
       teamMajorRows.length
         ? el('div', { class: 'table-wrap', 'data-reveal': '' }, [UI.majorRecordTable(teamMajorRows)])
@@ -153,13 +153,14 @@ UI.boot('home', function () {
     return el('div', { class: 'card card-pad', 'data-reveal': '', 'data-reveal-delay': String(i * 60) }, [
       el('h3', { text: b.title }),
       rows.length
-        ? el('div', { class: 'leader-list' }, rows.map((r) => {
+        ? el('div', { class: 'leader-list' }, rows.map((r, idx) => {
             const p = r.player;
+            const place = idx + 1;
             const av = p.photo
               ? el('div', { class: 'avatar avatar-sm' }, [el('img', { src: p.photo, alt: p.name, loading: 'lazy' })])
               : el('div', { class: 'avatar avatar-sm', text: UI.initials(p.nameEn || p.name) });
             return el('a', { class: 'leader-item row-link', href: `player.html?id=${p.id}` }, [
-              el('span', { class: 'rank num' }),
+              el('span', { class: 'rank num rank-' + (place <= 3 ? place : 'rest'), text: String(place) }),
               av,
               el('span', {}, [
                 el('div', { class: 'li-name', text: p.nameEn || p.name }),

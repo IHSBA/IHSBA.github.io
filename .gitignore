@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+
+# scratch/reference material, not needed to build or run the app
+data/*.pdf

@@ -29,13 +29,14 @@ UI.boot('games', function () {
     return;
   }
 
+  // [label, key, isNum (for default sort direction), align]
   const cols = [
-    ['Date', 'date', false],
-    ['Opponent', 'opponent', false],
-    ['Event', 'event', false],
-    ['Runs', 'ourScore', true],
-    ['Allowed', 'theirScore', true],
-    ['Result', 'result', false],
+    ['Date', 'date', false, 'left'],
+    ['Opponent', 'opponent', false, 'left'],
+    ['Event', 'event', false, 'left'],
+    ['Runs', 'ourScore', true, 'right'],
+    ['Allowed', 'theirScore', true, 'right'],
+    ['Result', 'result', false, 'center'],
   ];
 
   const wrap = el('div', { class: 'table-wrap', 'data-reveal': '' });
@@ -51,22 +52,22 @@ UI.boot('games', function () {
       return 0;
     });
 
-    const thead = el('thead', {}, [el('tr', {}, cols.map(([label, key, isNum]) => {
+    const thead = el('thead', {}, [el('tr', {}, cols.map(([label, key, isNum, align]) => {
       const active = key === sortKey;
       return el('th', {
-        class: [isNum ? 'num' : '', 'sortable', active ? 'sort-active' : ''].join(' ').trim(),
+        class: [align, 'sortable', active ? 'sort-active' : ''].join(' ').trim(),
         onclick: () => { if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = isNum ? -1 : 1; } render(); },
       }, [label + ' ', active ? el('span', { class: 'arrow', text: sortDir === 1 ? '▲' : '▼' }) : '']);
     }))]);
 
     const tbody = el('tbody', {}, sorted.map((g) =>
       el('tr', { class: 'row-link', onclick: () => (location.href = `game.html?id=${g.id}`) }, [
-        el('td', { class: 'num', text: g.date }),
-        el('td', { text: 'vs ' + g.opponent }),
-        el('td', { class: 'muted', text: g.event || '-' }),
-        el('td', { class: 'num', text: g.ourScore != null ? String(g.ourScore) : '-' }),
-        el('td', { class: 'num', text: g.theirScore != null ? String(g.theirScore) : '-' }),
-        el('td', {}, [resultBadge(g.result)]),
+        el('td', { class: 'left num', text: g.date }),
+        el('td', { class: 'left', text: 'vs ' + g.opponent }),
+        el('td', { class: 'left muted', text: g.event || '-' }),
+        el('td', { class: 'right num', text: g.ourScore != null ? String(g.ourScore) : '-' }),
+        el('td', { class: 'right num', text: g.theirScore != null ? String(g.theirScore) : '-' }),
+        el('td', { class: 'center' }, [resultBadge(g.result)]),
       ])
     ));
 

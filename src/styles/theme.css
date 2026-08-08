@@ -92,7 +92,6 @@ img { max-width: 100%; display: block; }
 }
 .nav-inner { display: flex; align-items: center; gap: 1.4rem; height: var(--header-h); }
 .brand { display: flex; align-items: center; gap: 0.65rem; }
-.brand-mark { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--accent); font-size: 1.1rem; box-shadow: 0 4px 14px rgba(255, 71, 51, 0.4); }
 .brand-text { display: flex; flex-direction: column; line-height: 1; }
 .brand-text strong { font-family: var(--font-disp); font-weight: 900; font-size: 1.02rem; letter-spacing: 0.02em; }
 .brand-text small { color: var(--faint); font-size: 0.66rem; letter-spacing: 0.06em; margin-top: 2px; }
@@ -163,6 +162,14 @@ table.stats .hl { color: var(--accent); font-weight: 700; }
 table.stats tfoot td { background: var(--panel-2); border-top: 2px solid var(--line-2); font-family: var(--font-num); }
 .row-link { cursor: pointer; }
 
+/* explicit per-column alignment overrides (games table etc.) */
+table.stats th.left, table.stats td.left { text-align: left; }
+table.stats th.right, table.stats td.right { text-align: right; }
+table.stats th.center, table.stats td.center { text-align: center; }
+
+/* leaderboard table: number + small photo + name */
+table.stats td.name-cell { display: flex; align-items: center; gap: 0.55rem; text-align: left; }
+
 /* ---- 7b. MAJOR RECORD TABLE (주요기록) ----------------------------- */
 table.stats.major thead tr.group-row th { border-bottom: 1px solid var(--line); background: var(--panel-2); }
 table.stats.major thead tr.group-row th.group-label { text-align: center; }
@@ -170,6 +177,12 @@ table.stats.major tbody tr.career-row { font-weight: 800; background: var(--pane
 table.stats.major tbody tr.career-row:hover { background: rgba(255, 71, 51, 0.08); }
 table.stats.major tbody tr.career-row td:first-child { background: var(--panel-2); font-weight: 800; }
 table.stats.major td.div-cell, table.stats.major th.div-cell { text-align: left; }
+
+/* Major Records heading: pull it away from the section above and tuck
+   it close to its own table below, with cleaner tracking on the title. */
+.major-records-section { margin-top: 1.6rem; padding-top: clamp(2.8rem, 6vw, 4.6rem); }
+.major-records-head { margin-bottom: 1rem; }
+.major-records-title { letter-spacing: 0.01em; }
 
 /* ---- 8. PLAYER CARDS --------------------------------------------- */
 .player-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 1.2rem; }
@@ -254,6 +267,7 @@ table.stats.major td.div-cell, table.stats.major th.div-cell { text-align: left;
 .avatar img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; }
 .avatar-lg { width: 130px; height: 160px; border-radius: var(--r-md); }
 .avatar-sm { width: 38px; height: 38px; border-radius: 9px; font-size: 0.85rem; }
+.avatar-xs { width: 26px; height: 26px; border-radius: 7px; font-size: 0.6rem; flex: none; }
 
 /* ---- 11. FORMS --------------------------------------------------- */
 .form-grid { display: grid; gap: 1rem; }
@@ -270,17 +284,65 @@ table.stats.major td.div-cell, table.stats.major th.div-cell { text-align: left;
 .segmented button { border: 0; background: none; font-family: var(--font-disp); font-weight: 800; font-size: 0.8rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); padding: 0.45rem 0.95rem; border-radius: 7px; cursor: pointer; transition: 0.18s; }
 .segmented button:hover { color: var(--text); }
 .segmented button.active { background: var(--accent); color: #fff; }
+.segmented a {
+  border: 0; font-family: var(--font-disp); font-weight: 800; font-size: 0.8rem; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--muted); padding: 0.45rem 0.95rem; border-radius: 7px; transition: 0.18s;
+}
+.segmented a:hover { color: var(--text); }
+.segmented a.active { background: var(--accent); color: #fff; }
+
+/* ---- 16. ADMIN ----------------------------------------------------- */
+.admin-table-actions { display: flex; gap: .4rem; justify-content: flex-end; }
+.admin-toast { margin: 0 0 1rem; padding: .7rem 1rem; border-radius: 9px; font-size: .85rem; }
+.admin-toast.ok { background: rgba(37, 208, 122, 0.14); color: var(--win); }
+.admin-toast.err { background: rgba(255, 93, 93, 0.14); color: var(--loss); }
+.photo-upload { display: flex; align-items: center; gap: .8rem; }
 
 /* ---- 12. LEADERS ------------------------------------------------- */
+:root {
+  --rank-1: #ffc83a; /* gold */
+  --rank-2: #cbd5e3; /* silver */
+  --rank-3: #d3894f; /* bronze */
+}
 .leader-list { counter-reset: rank; }
 .leader-item { display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 0.85rem; padding: 0.6rem 0.3rem; border-bottom: 1px solid var(--line); transition: background 0.15s; }
 .leader-item:last-child { border-bottom: 0; }
 .leader-item:hover { background: rgba(255, 71, 51, 0.06); }
-.leader-item .rank { counter-increment: rank; font-family: var(--font-num); font-weight: 700; color: var(--faint); width: 1.6rem; text-align: center; font-size: 1.05rem; }
-.leader-item:nth-child(1) .rank { color: var(--gold); }
+.leader-item .rank { font-family: var(--font-num); font-weight: 700; color: var(--faint); width: 1.8rem; text-align: center; font-size: 1.05rem; line-height: 1; }
+/* rank number scales down and gains an accent color for 1st/2nd/3rd */
+.leader-item .rank.rank-1 { font-size: 1.9rem; color: var(--rank-1); }
+.leader-item .rank.rank-2 { font-size: 1.5rem; color: var(--rank-2); }
+.leader-item .rank.rank-3 { font-size: 1.2rem; color: var(--rank-3); }
 .leader-item .li-name { font-family: var(--font-disp); font-weight: 700; }
 .leader-item .li-en { color: var(--faint); font-size: 0.72rem; }
 .leader-item .li-val { font-family: var(--font-num); font-weight: 700; font-size: 1.15rem; color: var(--accent); }
+
+/* Top-3 podium/highlight block above the full leaderboard table */
+.podium { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.4rem; }
+.podium-card {
+  position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 0.3rem; padding: 1.4rem 1rem 1.1rem; border-radius: var(--r-lg);
+  background: linear-gradient(160deg, var(--panel-2), var(--panel)); border: 1px solid var(--line);
+  transition: transform 0.2s, border-color 0.2s;
+}
+.podium-card:hover { transform: translateY(-3px); border-color: var(--line-2); }
+.podium-rank {
+  position: absolute; top: 0.7rem; left: 0.8rem; font-weight: 800; color: var(--faint);
+}
+.podium-card.rank-1 { padding-top: 1.7rem; order: 2; }
+.podium-card.rank-2 { order: 1; }
+.podium-card.rank-3 { order: 3; }
+.podium-card.rank-1 .podium-rank { color: var(--rank-1); font-size: 1.6rem; }
+.podium-card.rank-2 .podium-rank { color: var(--rank-2); font-size: 1.25rem; }
+.podium-card.rank-3 .podium-rank { color: var(--rank-3); font-size: 1.1rem; }
+.podium-avatar { width: 84px; height: 84px; border-radius: 50%; font-size: 1.4rem; border: 3px solid var(--line-2); }
+.podium-card.rank-1 .podium-avatar { width: 108px; height: 108px; border-color: var(--rank-1); }
+.podium-card.rank-2 .podium-avatar { border-color: var(--rank-2); }
+.podium-card.rank-3 .podium-avatar { border-color: var(--rank-3); }
+.podium-name { font-family: var(--font-disp); font-weight: 800; margin-top: 0.4rem; }
+.podium-en { color: var(--faint); font-size: 0.7rem; }
+.podium-val { font-family: var(--font-num); font-weight: 700; font-size: 1.6rem; color: var(--accent); margin-top: 0.2rem; }
+.podium-stat { font-family: var(--font-disp); font-size: 0.62rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
 
 /* ---- 13. MISC ---------------------------------------------------- */
 .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
@@ -323,6 +385,8 @@ table.stats.major td.div-cell, table.stats.major th.div-cell { text-align: left;
 }
 @media (max-width: 560px) {
   .cols-4, .cols-3, .cols-2 { grid-template-columns: 1fr; }
+  .podium { grid-template-columns: 1fr; }
+  .podium-card.rank-1, .podium-card.rank-2, .podium-card.rank-3 { order: initial; }
   .counts-grid { grid-template-columns: repeat(2, 1fr); }
   .game-row { grid-template-columns: 1fr auto; }
   .game-row .g-date { grid-column: 1 / -1; }
