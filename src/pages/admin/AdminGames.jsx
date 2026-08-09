@@ -44,10 +44,20 @@ export default function AdminGames() {
     });
   }, []);
 
-  async function loadStatsFor(gameId) {
-    const existingRows = await getGameStats(gameId);
-    const byPlayer = new Map(existingRows.map((r) => [r.player_id, r]));
-    setStatRows(players.map((p) => blankStatRow(p, byPlayer.get(p.id))));
+  async function loadStatsFor(gameId, teamId) {
+    try {
+      // Fetch fresh rather than trusting `players` state, which can
+      // still be empty if this runs before the initial load resolves.
+      const [existingRows, currentPlayers] = await Promise.all([
+        getGameStats(gameId),
+        teamId ? getPlayers(teamId) : Promise.resolve(players),
+      ]);
+      const byPlayer = new Map(existingRows.map((r) => [r.player_id, r]));
+      setStatRows(currentPlayers.map((p) => blankStatRow(p, byPlayer.get(p.id))));
+    } catch (err) {
+      setStatRows([]);
+      setStatMsg({ type: 'err', text: `Couldn't load player stats: ${err.message}` });
+    }
   }
 
   function startEdit(g) {
@@ -59,7 +69,7 @@ export default function AdminGames() {
     });
     setMsg(null);
     setStatMsg(null);
-    loadStatsFor(g.id);
+    loadStatsFor(g.id, team?.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   function resetForm() {
@@ -93,7 +103,7 @@ export default function AdminGames() {
       // has a game_id to attach to right away.
       setEditingId(saved.id);
       setForm((f) => ({ ...f, season: saved.season }));
-      await loadStatsFor(saved.id);
+      await loadStatsFor(saved.id, team.id);
     } catch (err) {
       setMsg({ type: 'err', text: err.message });
     } finally {
@@ -134,7 +144,7 @@ export default function AdminGames() {
           await deleteGameStat(row.existingId, row.player.id, form.season);
         }
       }
-      await loadStatsFor(editingId);
+      await loadStatsFor(editingId, team.id);
       setStatMsg({ type: 'ok', text: 'Player stats saved. Season totals recomputed automatically.' });
     } catch (err) {
       setStatMsg({ type: 'err', text: err.message });

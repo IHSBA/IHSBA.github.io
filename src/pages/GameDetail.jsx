@@ -14,8 +14,19 @@ export default function GameDetail() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getGame(id), getGameStats(id)])
-      .then(([game, boxScore]) => !cancelled && setState({ loading: false, game, boxScore }))
+    // Fetch independently: a box-score failure (e.g. game_stats table
+    // missing a migration) shouldn't make the whole page say "not found"
+    // when the game itself loaded fine.
+    getGame(id)
+      .then(async (game) => {
+        if (cancelled) return;
+        try {
+          const boxScore = await getGameStats(id);
+          if (!cancelled) setState({ loading: false, game, boxScore });
+        } catch (err) {
+          if (!cancelled) setState({ loading: false, game, boxScore: [], boxScoreError: err.message });
+        }
+      })
       .catch((err) => !cancelled && setState({ loading: false, error: err.message }));
     return () => {
       cancelled = true;
@@ -31,7 +42,7 @@ export default function GameDetail() {
     );
   }
 
-  const { game, boxScore } = state;
+  const { game, boxScore, boxScoreError } = state;
   return (
     <div className="container section">
       <Link className="backlink" to="/games">← Games</Link>
@@ -62,7 +73,9 @@ export default function GameDetail() {
         <div className="section-head">
           <h2>Box Score</h2>
         </div>
-        {boxScore.length ? (
+        {boxScoreError ? (
+          <p className="muted">Couldn't load the box score ({boxScoreError}).</p>
+        ) : boxScore.length ? (
           <Reveal className="table-wrap">
             <table className="stats">
               <thead>
