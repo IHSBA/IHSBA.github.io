@@ -120,8 +120,68 @@ async function main() {
   }
   console.log(`Players: ${playerIdBySeedId.size}`);
 
-  // ---- player_season_stats: sum battingLines per player into one
-  // season row (single season for now, from school.season) -----------
+  // ---- games ------------------------------------------------------------
+  const gameIdBySeedId = new Map();
+  for (const g of seed.games) {
+    const { data: existing, error: findErr } = await supabase
+      .from('games')
+      .select('id')
+      .eq('team_id', team.id)
+      .eq('date', g.date)
+      .eq('opponent', g.opponent)
+      .maybeSingle();
+    if (findErr) throw findErr;
+    const payload = {
+      team_id: team.id,
+      date: g.date,
+      opponent: g.opponent,
+      event_name: g.event || null,
+      runs: g.ourScore ?? null,
+      allowed: g.theirScore ?? null,
+      result: g.result || null,
+      location: g.location || null,
+      season: school.season,
+    };
+    let row;
+    if (existing) {
+      const { data, error } = await supabase.from('games').update(payload).eq('id', existing.id).select().single();
+      if (error) throw error;
+      row = data;
+    } else {
+      const { data, error } = await supabase.from('games').insert(payload).select().single();
+      if (error) throw error;
+      row = data;
+    }
+    gameIdBySeedId.set(g.id, row.id);
+  }
+  console.log(`Games: ${gameIdBySeedId.size}`);
+
+  // ---- game_stats: one row per player per game, straight from the
+  // legacy per-game battingLines (legacy field names differ slightly:
+  // IBB -> IB, SAC -> SH, GIDP -> GDP) ------------------------------
+  let gameStatRows = 0;
+  for (const line of seed.battingLines) {
+    const playerId = playerIdBySeedId.get(line.playerId);
+    const gameId = gameIdBySeedId.get(line.gameId);
+    if (!playerId || !gameId) continue;
+    const payload = {
+      game_id: gameId,
+      player_id: playerId,
+      AB: line.AB || 0, R: line.R || 0, H: line.H || 0,
+      '2B': line['2B'] || 0, '3B': line['3B'] || 0, HR: line.HR || 0,
+      RBI: line.RBI || 0, BB: line.BB || 0, HBP: line.HBP || 0,
+      IB: line.IBB || 0, SB: line.SB || 0, CS: line.CS || 0,
+      SO: line.SO || 0, GDP: line.GIDP || 0, SH: line.SAC || 0, SF: line.SF || 0,
+    };
+    const { error } = await supabase.from('game_stats').upsert(payload, { onConflict: 'game_id,player_id' });
+    if (error) throw error;
+    gameStatRows++;
+  }
+  console.log(`Game stat rows: ${gameStatRows}`);
+
+  // ---- player_season_stats: derived by summing each player's
+  // game_stats rows for this season (mirrors src/lib/api.js
+  // recomputeSeasonStats, kept dependency-free here) -------------------
   const byPlayer = new Map();
   for (const line of seed.battingLines) {
     if (!byPlayer.has(line.playerId)) byPlayer.set(line.playerId, []);
@@ -133,7 +193,6 @@ async function main() {
     if (!playerId) continue;
     const totals = { G: lines.length };
     RAW_KEYS.forEach((k) => (totals[k] = 0));
-    // legacy field names differ slightly: IBB -> IB, SAC -> SH, GIDP -> GDP
     lines.forEach((l) => {
       totals.AB += l.AB || 0; totals.R += l.R || 0; totals.H += l.H || 0;
       totals['2B'] += l['2B'] || 0; totals['3B'] += l['3B'] || 0; totals.HR += l.HR || 0;
@@ -157,38 +216,6 @@ async function main() {
     statRows++;
   }
   console.log(`Season stat rows: ${statRows}`);
-
-  // ---- games ------------------------------------------------------------
-  let gameRows = 0;
-  for (const g of seed.games) {
-    const { data: existing, error: findErr } = await supabase
-      .from('games')
-      .select('id')
-      .eq('team_id', team.id)
-      .eq('date', g.date)
-      .eq('opponent', g.opponent)
-      .maybeSingle();
-    if (findErr) throw findErr;
-    const payload = {
-      team_id: team.id,
-      date: g.date,
-      opponent: g.opponent,
-      event_name: g.event || null,
-      runs: g.ourScore ?? null,
-      allowed: g.theirScore ?? null,
-      result: g.result || null,
-      location: g.location || null,
-    };
-    if (existing) {
-      const { error } = await supabase.from('games').update(payload).eq('id', existing.id);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase.from('games').insert(payload);
-      if (error) throw error;
-    }
-    gameRows++;
-  }
-  console.log(`Games: ${gameRows}`);
   console.log('Done.');
 }
 

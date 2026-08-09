@@ -10,9 +10,9 @@ import GameDetail from './pages/GameDetail';
 import Leaderboards from './pages/Leaderboards';
 import Login from './pages/Login';
 import AdminHome from './pages/admin/AdminHome';
+import AdminSeason from './pages/admin/AdminSeason';
 import AdminPlayers from './pages/admin/AdminPlayers';
 import AdminGames from './pages/admin/AdminGames';
-import AdminStats from './pages/admin/AdminStats';
 import AdminTeam from './pages/admin/AdminTeam';
 
 export default function App() {
@@ -37,6 +37,14 @@ export default function App() {
             }
           />
           <Route
+            path="/admin/season"
+            element={
+              <ProtectedRoute>
+                <AdminSeason />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/team"
             element={
               <ProtectedRoute>
@@ -57,14 +65,6 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <AdminGames />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/stats"
-            element={
-              <ProtectedRoute>
-                <AdminStats />
               </ProtectedRoute>
             }
           />

@@ -2,10 +2,10 @@ import { NavLink } from 'react-router-dom';
 
 const TABS = [
   { to: '/admin', label: 'Overview', end: true },
+  { to: '/admin/season', label: 'Season' },
   { to: '/admin/team', label: 'Team' },
   { to: '/admin/players', label: 'Players' },
   { to: '/admin/games', label: 'Games' },
-  { to: '/admin/stats', label: 'Season Stats' },
 ];
 
 export default function AdminLayout({ title, children }) {

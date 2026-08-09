@@ -27,8 +27,9 @@ src/
   hooks/          scroll-reveal / count-up / tilt animation hooks
   context/        Supabase Auth session context
   pages/          Home, Players, PlayerDetail, Games, GameDetail, Leaderboards, Login
-  pages/admin/    protected CRUD: AdminHome, AdminTeam, AdminPlayers, AdminGames, AdminStats
+  pages/admin/    protected CRUD: AdminHome, AdminSeason, AdminTeam, AdminPlayers, AdminGames
 supabase/migrations/0001_init.sql   schema + RLS + storage bucket policies
+supabase/migrations/0002_game_stats.sql   per-game player stats table + games.season
 data/league-constants.json          league/park constants for advanced stats (placeholders)
 data/seed.json, data/*.csv          legacy per-game data (source for the seed script)
 scripts/seed-supabase.js            one-time import of data/seed.json into Supabase
@@ -47,10 +48,12 @@ npm run dev
 ## Supabase setup
 
 1. Create a Supabase project.
-2. In the SQL editor, run `supabase/migrations/0001_init.sql`. It creates
-   `teams`, `players`, `player_season_stats`, `games`, enables RLS with
-   public-read / authenticated-write policies on each, and creates the
-   `player-photos` Storage bucket (public read, authenticated write).
+2. In the SQL editor, run `supabase/migrations/0001_init.sql` then
+   `supabase/migrations/0002_game_stats.sql`, in that order. Together
+   they create `teams`, `players`, `player_season_stats`, `games`,
+   `game_stats`, enable RLS with public-read / authenticated-write
+   policies on each, and create the `player-photos` Storage bucket
+   (public read, authenticated write).
 3. Create the one admin user manually: Authentication → Users → Add user
    (email + password). There is no public sign-up in the app.
 4. Project Settings → API: copy the **Project URL** and the
@@ -82,12 +85,24 @@ To load it into a fresh Supabase project:
 ## Admin usage
 
 Sign in at `/#/login` (or click **Data Entry** in the nav) with the
-admin account created in Supabase Auth. From `/#/admin` you can manage
-the team's name/season/logo, players (including photo upload), games,
-and per-player per-season raw stats. Enter raw counting stats only —
-`TB`/`PA`/`ePA` and every AVG/OBP/SLG/OPS/wOBA/wRC+/WAR number are
-computed automatically (`src/stats/stats.js`, `src/stats/advancedStats.js`)
-and shown formatted (`.312`, `-` for divide-by-zero) everywhere in the UI.
+admin account created in Supabase Auth. From `/#/admin`:
+
+- **Season**: pick the active season, or add a new one. New games and
+  the public site's "current season" view default to this.
+- **Team**: name/season/logo.
+- **Players**: roster, including photo upload.
+- **Games**: add a game (date/opponent/score/result/season), then enter
+  each player's box-score line for that game right below it (check
+  "Played", fill in their raw stats). Season totals in
+  `player_season_stats` are recomputed automatically from the sum of a
+  player's game_stats rows every time you save or remove a line — there
+  is no manual season-total entry anymore.
+
+The admin only ever types raw counting stats (per game). `TB`/`PA`/`ePA`
+and every AVG/OBP/SLG/OPS/wOBA/wRC+/WAR number are computed automatically
+(`src/stats/stats.js`, `src/stats/advancedStats.js`, `src/lib/api.js`
+`recomputeSeasonStats`) and shown formatted (`.312`, `-` for
+divide-by-zero) everywhere in the UI.
 
 Advanced stats (`wOBA`, `wRC+`, `oWAR`, `WAR`, `R/ePA`) depend on league
 constants in `data/league-constants.json`, which currently holds
@@ -128,10 +143,6 @@ server-side rewrite rule — a hard refresh on a real path like
 
 ## Known scope simplifications
 
-- The old game-detail page showed a per-game player box score. The
-  spec's `games` table only stores one row per game (final score +
-  result), with no per-player per-game line table, so `GameDetail` now
-  shows game metadata only. Per-season stats still live in
-  `player_season_stats`.
 - `dWAR` is always `null` (renders `-`) — there's no fielding data
-  source (putouts/assists/errors) to compute it honestly from.
+  source (putouts/assists/errors) to compute it honestly from, so full
+  `WAR` (oWAR + dWAR) renders `-` too.
