@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { getTeam, getPlayers, getAllSeasonStats } from '../lib/api';
+import { Link, useOutletContext } from 'react-router-dom';
+import { getPlayers, getAllSeasonStats } from '../lib/api';
 import { derive, fmtRate } from '../stats/stats';
 import { initials } from '../lib/format';
+import { useSeason } from '../hooks/useSeason';
+import SeasonPicker from '../components/SeasonPicker';
 import Reveal from '../components/Reveal';
 import Empty from '../components/Empty';
 
 export default function Players() {
+  const { team } = useOutletContext();
+  const { season, seasons, setSeason } = useSeason(team);
   const [state, setState] = useState({ loading: true });
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState('AVG');
@@ -14,13 +18,8 @@ export default function Players() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const team = await getTeam();
-      if (!team) {
-        if (!cancelled) setState({ loading: false, list: [] });
-        return;
-      }
-      const [players, allStats] = await Promise.all([getPlayers(team.id), getAllSeasonStats(team.id)]);
-      const currentSeasonStats = allStats.filter((s) => s.season === team.season);
+      const [players, allStats] = await Promise.all([getPlayers(team.id, season), getAllSeasonStats(team.id)]);
+      const currentSeasonStats = allStats.filter((s) => s.season === season);
       const list = players.map((p) => ({
         player: p,
         totals: derive(currentSeasonStats.find((s) => s.player_id === p.id) || {}),
@@ -34,7 +33,7 @@ export default function Players() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [team, season]);
 
   if (state.loading) return <div className="container section">Loading…</div>;
 
@@ -56,6 +55,7 @@ export default function Players() {
           <h1>Players</h1>
         </div>
         <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+          <SeasonPicker season={season} seasons={seasons} onChange={setSeason} />
           <input
             type="search"
             className="control"
@@ -80,7 +80,7 @@ export default function Players() {
       {list.length ? (
         <div className="player-grid">
           {list.map((s, i) => (
-            <PlayerCard key={s.player.id} s={s} delay={(i % 8) * 45} />
+            <PlayerCard key={s.player.id} s={s} delay={(i % 8) * 45} slug={team.slug} />
           ))}
         </div>
       ) : (
@@ -90,10 +90,10 @@ export default function Players() {
   );
 }
 
-function PlayerCard({ s, delay }) {
+function PlayerCard({ s, delay, slug }) {
   const { player: p, totals: t } = s;
   return (
-    <Reveal as={Link} to={`/players/${p.id}`} className="player-card" delay={delay} data-tilt="">
+    <Reveal as={Link} to={`/schools/${slug}/players/${p.id}`} className="player-card" delay={delay} data-tilt="">
       <div className="pc-media">
         {p.number != null && <span className="pc-num">{p.number}</span>}
         {p.profile_photo_url ? (

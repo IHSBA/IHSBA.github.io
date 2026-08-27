@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { getPlayer, getPlayerSeasonStats, getTeam } from '../lib/api';
+import { getPlayer, getPlayerSeasonStats, getTeamBySlug } from '../lib/api';
 import { derive, aggregate, majorRecordRows } from '../stats/stats';
 import { computeAdvanced } from '../stats/advancedStats';
 import Avatar from '../components/Avatar';
@@ -10,13 +10,13 @@ import CountUp from '../components/CountUp';
 import Empty from '../components/Empty';
 
 export default function PlayerDetail() {
-  const { id } = useParams();
+  const { id, slug } = useParams();
   const [state, setState] = useState({ loading: true });
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const [player, team] = await Promise.all([getPlayer(id), getTeam()]);
+      const [player, team] = await Promise.all([getPlayer(id), getTeamBySlug(slug)]);
       const seasons = await getPlayerSeasonStats(id);
       if (!cancelled) setState({ loading: false, player, team, seasons });
     }
@@ -27,13 +27,13 @@ export default function PlayerDetail() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, slug]);
 
   if (state.loading) return <div className="container section">Loading…</div>;
   if (state.error || !state.player) {
     return (
       <div className="container section">
-        <Empty message="Player not found." cta={{ to: '/players', label: 'Back to Players' }} />
+        <Empty message="Player not found." cta={{ to: `/schools/${slug}/players`, label: 'Back to Players' }} />
       </div>
     );
   }
@@ -57,7 +57,7 @@ export default function PlayerDetail() {
 
   return (
     <div className="container section">
-      <Link className="backlink" to="/players">← Players</Link>
+      <Link className="backlink" to={`/schools/${slug}/players`}>← Players</Link>
 
       <Reveal className="pd-hero">
         {player.number != null && <span className="pd-num">{player.number}</span>}

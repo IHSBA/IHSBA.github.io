@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getTeam, getPlayers, getGames } from '../../lib/api';
+import { useAdminSchool } from '../../context/AdminSchoolContext';
 import AdminLayout from './AdminLayout';
 
 export default function AdminHome() {
+  const { teamId } = useAdminSchool();
   const [state, setState] = useState({ loading: true });
 
   useEffect(() => {
+    if (!teamId) {
+      setState({ loading: false, team: null });
+      return;
+    }
     let cancelled = false;
-    getTeam()
+    getTeam(teamId)
       .then(async (team) => {
-        if (!team) return { team: null };
         const [players, games] = await Promise.all([getPlayers(team.id), getGames(team.id)]);
         return { team, players, games };
       })
@@ -19,7 +24,7 @@ export default function AdminHome() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [teamId]);
 
   return (
     <AdminLayout title="Overview">

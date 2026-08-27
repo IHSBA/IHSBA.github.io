@@ -4,6 +4,7 @@ import {
   getDistinctSeasons,
 } from '../../lib/api';
 import { RAW_KEYS } from '../../stats/stats';
+import { useAdminSchool } from '../../context/AdminSchoolContext';
 import AdminLayout from './AdminLayout';
 import Badge from '../../components/Badge';
 
@@ -16,6 +17,7 @@ function blankStatRow(player, existing) {
 }
 
 export default function AdminGames() {
+  const { teamId } = useAdminSchool();
   const [team, setTeam] = useState(null);
   const [seasons, setSeasons] = useState([]);
   const [players, setPlayers] = useState([]);
@@ -28,29 +30,33 @@ export default function AdminGames() {
   const [busy, setBusy] = useState(false);
   const [statsBusy, setStatsBusy] = useState(false);
 
-  async function refresh(teamId, season) {
-    setGames(await getGames(teamId));
-    setSeasons(await getDistinctSeasons(teamId, season));
+  async function refresh(tid, season) {
+    setGames(await getGames(tid));
+    setSeasons(await getDistinctSeasons(tid, season));
   }
 
   useEffect(() => {
-    getTeam().then(async (t) => {
+    if (!teamId) {
+      setTeam(null);
+      return;
+    }
+    getTeam(teamId).then(async (t) => {
       setTeam(t);
-      if (t) {
-        setForm((f) => ({ ...f, season: t.season }));
-        setPlayers(await getPlayers(t.id));
-        await refresh(t.id, t.season);
-      }
+      setForm((f) => ({ ...f, season: t.season }));
+      setPlayers(await getPlayers(t.id));
+      await refresh(t.id, t.season);
     });
-  }, []);
+  }, [teamId]);
 
-  async function loadStatsFor(gameId, teamId) {
+  async function loadStatsFor(gameId, teamId, season) {
     try {
       // Fetch fresh rather than trusting `players` state, which can
       // still be empty if this runs before the initial load resolves.
+      // Scoped to the game's season roster, not every player the team
+      // has ever had, so a graduated player doesn't show up here.
       const [existingRows, currentPlayers] = await Promise.all([
         getGameStats(gameId),
-        teamId ? getPlayers(teamId) : Promise.resolve(players),
+        teamId ? getPlayers(teamId, season) : Promise.resolve(players),
       ]);
       const byPlayer = new Map(existingRows.map((r) => [r.player_id, r]));
       setStatRows(currentPlayers.map((p) => blankStatRow(p, byPlayer.get(p.id))));
@@ -69,7 +75,7 @@ export default function AdminGames() {
     });
     setMsg(null);
     setStatMsg(null);
-    loadStatsFor(g.id, team?.id);
+    loadStatsFor(g.id, team?.id, g.season);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   function resetForm() {
@@ -103,7 +109,7 @@ export default function AdminGames() {
       // has a game_id to attach to right away.
       setEditingId(saved.id);
       setForm((f) => ({ ...f, season: saved.season }));
-      await loadStatsFor(saved.id, team.id);
+      await loadStatsFor(saved.id, team.id, saved.season);
     } catch (err) {
       setMsg({ type: 'err', text: err.message });
     } finally {

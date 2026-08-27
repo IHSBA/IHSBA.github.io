@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getTeam, getPlayers, getAllSeasonStats } from '../lib/api';
+import { useNavigate, useOutletContext } from 'react-router-dom';
+import { getPlayers, getAllSeasonStats } from '../lib/api';
 import { derive, fmtRate } from '../stats/stats';
+import { useSeason } from '../hooks/useSeason';
+import SeasonPicker from '../components/SeasonPicker';
 import Podium from '../components/Podium';
 import Avatar from '../components/Avatar';
 import Reveal from '../components/Reveal';
@@ -16,7 +18,9 @@ const COLS = [
 const CHIPS = [['AVG', 'AVG'], ['OPS', 'OPS'], ['HR', 'HR'], ['RBI', 'RBI'], ['H', 'H'], ['SB', 'SB']];
 
 export default function Leaderboards() {
-  const [season, setSeason] = useState(null);
+  const { team } = useOutletContext();
+  const { season, seasons, setSeason } = useSeason(team);
+  const [data, setData] = useState(null);
   const [sortKey, setSortKey] = useState('OPS');
   const [sortDir, setSortDir] = useState(-1);
   const [minAB, setMinAB] = useState(2);
@@ -25,28 +29,23 @@ export default function Leaderboards() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const team = await getTeam();
-      if (!team) {
-        if (!cancelled) setSeason([]);
-        return;
-      }
-      const [players, allStats] = await Promise.all([getPlayers(team.id), getAllSeasonStats(team.id)]);
-      const currentSeasonStats = allStats.filter((s) => s.season === team.season);
-      const list = players
+      const [players, allStats] = await Promise.all([getPlayers(team.id, season), getAllSeasonStats(team.id)]);
+      const currentSeasonStats = allStats.filter((s) => s.season === season);
+      const rows = players
         .map((p) => ({ player: p, totals: derive(currentSeasonStats.find((s) => s.player_id === p.id) || {}) }))
         .filter((s) => s.totals.G > 0);
-      if (!cancelled) setSeason(list);
+      if (!cancelled) setData(rows);
     }
     load().catch((err) => console.error(err));
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [team, season]);
 
-  if (season === null) return <div className="container section">Loading…</div>;
+  if (data === null) return <div className="container section">Loading…</div>;
 
   const qualified = (s) => (s.totals.AB || 0) >= minAB;
-  const list = season.slice().sort((a, b) => {
+  const list = data.slice().sort((a, b) => {
     if (sortKey === 'name') {
       return (a.player.name_en || a.player.name).localeCompare(b.player.name_en || b.player.name) * sortDir;
     }
@@ -78,6 +77,7 @@ export default function Leaderboards() {
           <p className="eyebrow">Leaderboards</p>
           <h1>Leaderboards</h1>
         </div>
+        <SeasonPicker season={season} seasons={seasons} onChange={setSeason} />
       </div>
 
       <Podium items={podiumList} statKey={sortKey} />
@@ -132,7 +132,7 @@ export default function Leaderboards() {
               const t = s.totals;
               const unq = RATE_KEYS.has(sortKey) && !qualified(s);
               return (
-                <tr key={s.player.id} className="row-link" onClick={() => navigate(`/players/${s.player.id}`)}>
+                <tr key={s.player.id} className="row-link" onClick={() => navigate(`/schools/${team.slug}/players/${s.player.id}`)}>
                   {COLS.map(([, key]) => {
                     if (key === 'name') {
                       return (

@@ -1,19 +1,26 @@
 import { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-
-const LINKS = [
-  { to: '/', label: 'Home', end: true },
-  { to: '/players', label: 'Players' },
-  { to: '/games', label: 'Games' },
-  { to: '/leaderboards', label: 'Leaderboards' },
-];
 
 export default function Nav() {
   const [open, setOpen] = useState(false);
   const { session } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  // Nav sits outside <Routes>, so useParams() can't see :slug here --
+  // read it straight off the URL instead.
+  const slug = pathname.match(/^\/schools\/([^/]+)/)?.[1];
+
+  const links = slug
+    ? [
+        { to: `/schools/${slug}`, label: 'Home', end: true },
+        { to: `/schools/${slug}/players`, label: 'Players' },
+        { to: `/schools/${slug}/games`, label: 'Games' },
+        { to: `/schools/${slug}/leaderboards`, label: 'Leaderboards' },
+        { to: '/', label: 'All Schools' },
+      ]
+    : [];
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -30,7 +37,7 @@ export default function Nav() {
           </span>
         </a>
         <nav className="nav-links" id="navLinks">
-          {LINKS.map((l) => (
+          {links.map((l) => (
             <NavLink key={l.to} to={l.to} end={l.end} onClick={() => setOpen(false)}>
               {l.label}
             </NavLink>

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getTeam, getGames } from '../lib/api';
+import { useNavigate, useOutletContext } from 'react-router-dom';
+import { getGames } from '../lib/api';
 import { teamRecord } from '../stats/stats';
+import { useSeason } from '../hooks/useSeason';
+import SeasonPicker from '../components/SeasonPicker';
 import Badge from '../components/Badge';
 import Empty from '../components/Empty';
 import Reveal from '../components/Reveal';
@@ -17,6 +19,8 @@ const COLS = [
 ];
 
 export default function Games() {
+  const { team } = useOutletContext();
+  const { season, seasons, setSeason } = useSeason(team);
   const [games, setGames] = useState(null);
   const [sortKey, setSortKey] = useState('date');
   const [sortDir, setSortDir] = useState(-1);
@@ -24,14 +28,13 @@ export default function Games() {
 
   useEffect(() => {
     let cancelled = false;
-    getTeam()
-      .then((team) => (team ? getGames(team.id) : []))
+    getGames(team.id, season)
       .then((g) => !cancelled && setGames(g))
       .catch((err) => console.error(err));
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [team, season]);
 
   if (games === null) return <div className="container section">Loading…</div>;
 
@@ -61,10 +64,13 @@ export default function Games() {
           <p className="eyebrow">Schedule & Results</p>
           <h1>Games</h1>
         </div>
-        <div className="segmented">
-          <span className="badge badge-w" style={{ margin: '.3rem' }}>{record.W}W</span>
-          <span className="badge badge-l" style={{ margin: '.3rem' }}>{record.L}L</span>
-          <span className="badge badge-t" style={{ margin: '.3rem' }}>{record.T}T</span>
+        <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center' }}>
+          <SeasonPicker season={season} seasons={seasons} onChange={setSeason} />
+          <div className="segmented">
+            <span className="badge badge-w" style={{ margin: '.3rem' }}>{record.W}W</span>
+            <span className="badge badge-l" style={{ margin: '.3rem' }}>{record.L}L</span>
+            <span className="badge badge-t" style={{ margin: '.3rem' }}>{record.T}T</span>
+          </div>
         </div>
       </div>
 
@@ -92,7 +98,7 @@ export default function Games() {
             </thead>
             <tbody>
               {sorted.map((g) => (
-                <tr key={g.id} className="row-link" onClick={() => navigate(`/games/${g.id}`)}>
+                <tr key={g.id} className="row-link" onClick={() => navigate(`/schools/${team.slug}/games/${g.id}`)}>
                   <td className="left num">{g.date}</td>
                   <td className="left">vs {g.opponent}</td>
                   <td className="left muted">{g.event_name || '-'}</td>

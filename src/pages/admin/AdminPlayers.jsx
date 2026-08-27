@@ -1,29 +1,51 @@
 import { useEffect, useState } from 'react';
-import { getTeam, getPlayers, savePlayer, deletePlayer, uploadPlayerPhoto } from '../../lib/api';
+import {
+  getTeam, getPlayers, savePlayer, deletePlayer, uploadPlayerPhoto,
+  getDistinctSeasons, enrollPlayerInSeason, removePlayerFromSeason,
+} from '../../lib/api';
+import { useAdminSchool } from '../../context/AdminSchoolContext';
 import AdminLayout from './AdminLayout';
 import Avatar from '../../components/Avatar';
 
 const BLANK = { name: '', name_en: '', number: '', position: '', profile_photo_url: '' };
 
 export default function AdminPlayers() {
+  const { teamId } = useAdminSchool();
   const [team, setTeam] = useState(null);
-  const [players, setPlayers] = useState([]);
+  const [seasons, setSeasons] = useState([]);
+  const [season, setSeason] = useState('');
+  const [roster, setRoster] = useState([]);
+  const [allPlayers, setAllPlayers] = useState([]);
+  const [enrollId, setEnrollId] = useState('');
   const [form, setForm] = useState(BLANK);
   const [editingId, setEditingId] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  async function refresh(teamId) {
-    setPlayers(await getPlayers(teamId));
+  async function refreshRoster(tid, s) {
+    const [rosterList, everyone] = await Promise.all([getPlayers(tid, s), getPlayers(tid)]);
+    setRoster(rosterList);
+    setAllPlayers(everyone);
   }
 
   useEffect(() => {
-    getTeam().then(async (t) => {
+    if (!teamId) {
+      setTeam(null);
+      return;
+    }
+    getTeam(teamId).then(async (t) => {
       setTeam(t);
-      if (t) await refresh(t.id);
+      setSeason(t.season);
+      setSeasons(await getDistinctSeasons(t.id, t.season));
+      await refreshRoster(t.id, t.season);
     });
-  }, []);
+  }, [teamId]);
+
+  async function handleSeasonChange(next) {
+    setSeason(next);
+    await refreshRoster(team.id, next);
+  }
 
   function startEdit(p) {
     setEditingId(p.id);
@@ -62,7 +84,8 @@ export default function AdminPlayers() {
         photoUrl = await uploadPlayerPhoto(saved.id, photoFile);
         await savePlayer({ id: saved.id, profile_photo_url: photoUrl });
       }
-      await refresh(team.id);
+      if (!editingId) await enrollPlayerInSeason(saved.id, season);
+      await refreshRoster(team.id, season);
       setMsg({ type: 'ok', text: editingId ? 'Player updated.' : 'Player added.' });
       resetForm();
     } catch (err) {
@@ -72,15 +95,38 @@ export default function AdminPlayers() {
     }
   }
 
-  async function handleDelete(id) {
-    if (!window.confirm('Delete this player and all their season stats?')) return;
+  async function handleEnroll() {
+    if (!enrollId) return;
     try {
-      await deletePlayer(id);
-      await refresh(team.id);
+      await enrollPlayerInSeason(enrollId, season);
+      setEnrollId('');
+      await refreshRoster(team.id, season);
     } catch (err) {
       setMsg({ type: 'err', text: err.message });
     }
   }
+
+  async function handleRemoveFromSeason(id) {
+    if (!window.confirm(`Remove this player from the ${season} roster? Their history in other seasons is untouched.`)) return;
+    try {
+      await removePlayerFromSeason(id, season);
+      await refreshRoster(team.id, season);
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message });
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!window.confirm('Delete this player and all their history, in every season?')) return;
+    try {
+      await deletePlayer(id);
+      await refreshRoster(team.id, season);
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message });
+    }
+  }
+
+  const notOnRoster = allPlayers.filter((p) => !roster.some((r) => r.id === p.id));
 
   return (
     <AdminLayout title="Players">
@@ -88,8 +134,15 @@ export default function AdminPlayers() {
         <p className="muted">Set up a team first.</p>
       ) : (
         <>
+          <div className="field" style={{ maxWidth: 240, marginBottom: '1.2rem' }}>
+            <label htmlFor="ap-season">Season</label>
+            <select id="ap-season" value={season} onChange={(e) => handleSeasonChange(e.target.value)}>
+              {seasons.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+
           <form className="card card-pad form-grid" onSubmit={handleSubmit} style={{ maxWidth: 520, marginBottom: '1.6rem' }}>
-            <h3 style={{ margin: 0 }}>{editingId ? 'Edit Player' : 'Add Player'}</h3>
+            <h3 style={{ margin: 0 }}>{editingId ? 'Edit Player' : `Add Player (enrolls in ${season})`}</h3>
             {msg && <p className={`admin-toast ${msg.type}`}>{msg.text}</p>}
             <div className="field">
               <label htmlFor="p-name">Name (Korean)</label>
@@ -124,6 +177,23 @@ export default function AdminPlayers() {
             </div>
           </form>
 
+          {notOnRoster.length > 0 && (
+            <div className="card card-pad" style={{ maxWidth: 520, marginBottom: '1.6rem', display: 'flex', gap: '.6rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div className="field" style={{ flex: 1, minWidth: 200 }}>
+                <label htmlFor="ap-enroll">Add an existing player to {season}</label>
+                <select id="ap-enroll" value={enrollId} onChange={(e) => setEnrollId(e.target.value)}>
+                  <option value="">Select a player…</option>
+                  {notOnRoster.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name_en || p.name}</option>
+                  ))}
+                </select>
+              </div>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={handleEnroll} disabled={!enrollId}>
+                Add to roster
+              </button>
+            </div>
+          )}
+
           <div className="table-wrap">
             <table className="stats">
               <thead>
@@ -132,7 +202,7 @@ export default function AdminPlayers() {
                 </tr>
               </thead>
               <tbody>
-                {players.map((p) => (
+                {roster.map((p) => (
                   <tr key={p.id}>
                     <td className="name-cell">
                       <Avatar player={p} size="xs" />
@@ -143,6 +213,7 @@ export default function AdminPlayers() {
                     <td>
                       <div className="admin-table-actions">
                         <button className="btn btn-ghost btn-sm" onClick={() => startEdit(p)}>Edit</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => handleRemoveFromSeason(p.id)}>Remove from {season}</button>
                         <button className="btn btn-danger btn-sm" onClick={() => handleDelete(p.id)}>Delete</button>
                       </div>
                     </td>

@@ -1,27 +1,35 @@
 import { useEffect, useState } from 'react';
 import { getTeam, upsertTeam } from '../../lib/api';
+import { useAdminSchool } from '../../context/AdminSchoolContext';
 import AdminLayout from './AdminLayout';
 
 export default function AdminTeam() {
+  const { teamId, refresh } = useAdminSchool();
   const [team, setTeam] = useState(null);
-  const [form, setForm] = useState({ name: '', season: '', logo_url: '' });
+  const [form, setForm] = useState({ name: '', season: '', logo_url: '', slug: '' });
   const [msg, setMsg] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getTeam().then((t) => {
-      if (t) setForm({ name: t.name, season: t.season, logo_url: t.logo_url || '' });
+    if (!teamId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    getTeam(teamId).then((t) => {
+      setForm({ name: t.name, season: t.season, logo_url: t.logo_url || '', slug: t.slug || '' });
       setTeam(t);
       setLoading(false);
     });
-  }, []);
+  }, [teamId]);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setMsg(null);
     try {
-      const saved = await upsertTeam(team?.id ? { id: team.id, ...form } : form);
+      const saved = await upsertTeam({ id: team.id, ...form });
       setTeam(saved);
+      await refresh(saved.id);
       setMsg({ type: 'ok', text: 'Team saved.' });
     } catch (err) {
       setMsg({ type: 'err', text: err.message });
@@ -32,12 +40,18 @@ export default function AdminTeam() {
     <AdminLayout title="Team">
       {loading ? (
         <p className="muted">Loading…</p>
+      ) : !team ? (
+        <p className="muted">No school selected. Use "+ New School" above to create one.</p>
       ) : (
         <form className="card card-pad form-grid" onSubmit={handleSubmit} style={{ maxWidth: 480 }}>
           {msg && <p className={`admin-toast ${msg.type}`}>{msg.text}</p>}
           <div className="field">
             <label htmlFor="t-name">Name</label>
             <input id="t-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div className="field">
+            <label htmlFor="t-slug">URL slug</label>
+            <input id="t-slug" required value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} />
           </div>
           <div className="field">
             <label htmlFor="t-season">Season</label>

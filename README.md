@@ -1,9 +1,12 @@
 # IHSBA — International High School Baseball Analytics
 
-KBO/Statiz-style team and player baseball stats. React + Vite front end,
-Supabase (Postgres + Auth + Storage) backend. Scope today is one school
-(Fayston); the data model already has a `teams` entity so more schools
-can join later without a redesign.
+KBO/Statiz-style team and player baseball stats for a league of schools.
+React + Vite front end, Supabase (Postgres + Auth + Storage) backend. The
+public site is a league home (`/`) that lists schools, each with its own
+`/schools/:slug` summary/players/games/leaderboards, all season-scoped
+via a `?season=` picker. Rosters are season-scoped too (`player_seasons`),
+so a season can be created as a copy of a prior one and edited
+independently from there.
 
 ## Stack
 
@@ -30,6 +33,7 @@ src/
   pages/admin/    protected CRUD: AdminHome, AdminSeason, AdminTeam, AdminPlayers, AdminGames
 supabase/migrations/0001_init.sql   schema + RLS + storage bucket policies
 supabase/migrations/0002_game_stats.sql   per-game player stats table + games.season
+supabase/migrations/0003_league_and_rosters.sql   teams.slug + season-scoped rosters (player_seasons)
 data/league-constants.json          league/park constants for advanced stats (placeholders)
 data/seed.json, data/*.csv          legacy per-game data (source for the seed script)
 scripts/seed-supabase.js            one-time import of data/seed.json into Supabase
@@ -48,12 +52,13 @@ npm run dev
 ## Supabase setup
 
 1. Create a Supabase project.
-2. In the SQL editor, run `supabase/migrations/0001_init.sql` then
-   `supabase/migrations/0002_game_stats.sql`, in that order. Together
-   they create `teams`, `players`, `player_season_stats`, `games`,
-   `game_stats`, enable RLS with public-read / authenticated-write
-   policies on each, and create the `player-photos` Storage bucket
-   (public read, authenticated write).
+2. In the SQL editor, run `supabase/migrations/0001_init.sql`, then
+   `0002_game_stats.sql`, then `0003_league_and_rosters.sql`, in that
+   order. Together they create `teams` (with a unique `slug`), `players`,
+   `player_season_stats`, `games`, `game_stats`, `player_seasons`
+   (season-scoped roster membership), enable RLS with public-read /
+   authenticated-write policies on each, and create the `player-photos`
+   Storage bucket (public read, authenticated write).
 3. Create the one admin user manually: Authentication → Users → Add user
    (email + password). There is no public sign-up in the app.
 4. Project Settings → API: copy the **Project URL** and the

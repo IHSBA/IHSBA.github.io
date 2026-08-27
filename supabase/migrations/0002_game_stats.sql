@@ -13,8 +13,7 @@ alter table games add column if not exists season text;
 
 -- Backfill existing games from their team's current season so nothing
 -- becomes orphaned by this migration.
-update games g
-set season = t.season
+update games
 from teams t
 where g.team_id = t.id and g.season is null;
 

@@ -7,10 +7,26 @@
 import { supabase } from './supabaseClient';
 import { computeStoredFields, RAW_KEYS } from '../stats/stats';
 
-// ---- team -----------------------------------------------------------
-// Single-team scope for now: the first team row is "the" team.
-export async function getTeam() {
-  const { data, error } = await supabase.from('teams').select('*').order('created_at').limit(1).maybeSingle();
+// ---- teams -----------------------------------------------------------
+// Multi-school scope: every school is a row in `teams`. `getTeam(id)`
+// with no id falls back to the first row, kept only for old call sites
+// that just want "a" team (e.g. bootstrapping admin's school picker).
+export async function getTeam(id) {
+  let q = supabase.from('teams').select('*');
+  q = id ? q.eq('id', id).single() : q.order('created_at').limit(1).maybeSingle();
+  const { data, error } = await q;
+  if (error) throw error;
+  return data;
+}
+
+export async function getTeamBySlug(slug) {
+  const { data, error } = await supabase.from('teams').select('*').eq('slug', slug).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function getTeams() {
+  const { data, error } = await supabase.from('teams').select('*').order('name');
   if (error) throw error;
   return data;
 }
@@ -22,12 +38,38 @@ export async function upsertTeam(team) {
 }
 
 // ---- players ----------------------------------------------------------
-export async function getPlayers(teamId) {
-  let q = supabase.from('players').select('*').order('number', { ascending: true, nullsFirst: false });
+// With `season`, only players enrolled in that season's roster
+// (player_seasons) come back; without it, every player the team has
+// ever had (used by admin bio-editing, which is season-agnostic).
+export async function getPlayers(teamId, season) {
+  let q = supabase.from('players').select(season ? '*, player_seasons!inner(season)' : '*').order('number', { ascending: true, nullsFirst: false });
   if (teamId) q = q.eq('team_id', teamId);
+  if (season) q = q.eq('player_seasons.season', season);
   const { data, error } = await q;
   if (error) throw error;
-  return data;
+  return season ? data.map(({ player_seasons, ...p }) => p) : data;
+}
+
+// ---- roster membership (player_seasons) --------------------------------
+export async function enrollPlayerInSeason(playerId, season) {
+  const { error } = await supabase.from('player_seasons').upsert({ player_id: playerId, season });
+  if (error) throw error;
+}
+
+export async function removePlayerFromSeason(playerId, season) {
+  const { error } = await supabase.from('player_seasons').delete().eq('player_id', playerId).eq('season', season);
+  if (error) throw error;
+}
+
+// Enrolls every player currently on `fromSeason`'s roster into `toSeason`
+// too (used when creating a new season from the admin Season tab).
+export async function copyRosterToSeason(teamId, fromSeason, toSeason) {
+  const roster = await getPlayers(teamId, fromSeason);
+  if (!roster.length) return;
+  const { error } = await supabase
+    .from('player_seasons')
+    .upsert(roster.map((p) => ({ player_id: p.id, season: toSeason })));
+  if (error) throw error;
 }
 
 export async function getPlayer(id) {
@@ -159,9 +201,10 @@ export async function deleteGameStat(id, playerId, season) {
 }
 
 // ---- games --------------------------------------------------------
-export async function getGames(teamId) {
+export async function getGames(teamId, season) {
   let q = supabase.from('games').select('*').order('date', { ascending: false });
   if (teamId) q = q.eq('team_id', teamId);
+  if (season) q = q.eq('season', season);
   const { data, error } = await q;
   if (error) throw error;
   return data;

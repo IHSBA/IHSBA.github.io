@@ -1,32 +1,31 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { getTeam, getPlayers, getGames, getAllSeasonStats } from '../lib/api';
+import { Link, useOutletContext } from 'react-router-dom';
+import { getPlayers, getGames, getAllSeasonStats } from '../lib/api';
 import { derive, aggregate, teamRecord, fmtRate, majorRecordRows } from '../stats/stats';
 import { computeAdvanced } from '../stats/advancedStats';
+import { useSeason } from '../hooks/useSeason';
 import Reveal from '../components/Reveal';
 import CountUp from '../components/CountUp';
 import LeaderCard from '../components/LeaderCard';
 import StatsTable from '../components/StatsTable';
+import SeasonPicker from '../components/SeasonPicker';
 import Badge from '../components/Badge';
 import Empty from '../components/Empty';
 
 export default function Home() {
+  const { team } = useOutletContext();
+  const { season, seasons, setSeason } = useSeason(team);
   const [state, setState] = useState({ loading: true });
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const team = await getTeam();
-      if (!team) {
-        if (!cancelled) setState({ loading: false, team: null });
-        return;
-      }
       const [players, games, allStats] = await Promise.all([
-        getPlayers(team.id),
-        getGames(team.id),
+        getPlayers(team.id, season),
+        getGames(team.id, season),
         getAllSeasonStats(team.id),
       ]);
-      if (!cancelled) setState({ loading: false, team, players, games, allStats });
+      if (!cancelled) setState({ loading: false, players, games, allStats });
     }
     load().catch((err) => {
       console.error(err);
@@ -35,27 +34,20 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [team, season]);
 
   if (state.loading) return <div className="container section">Loading…</div>;
   if (state.error) return <div className="container section">Failed to load: {state.error}</div>;
-  if (!state.team) {
-    return (
-      <div className="container section">
-        <Empty message="No team set up yet. Sign in to add one." cta={{ to: '/login', label: 'Admin Login' }} />
-      </div>
-    );
-  }
 
-  const { team, players, games, allStats } = state;
+  const { players, games, allStats } = state;
   const record = teamRecord(games);
-  const currentSeasonStats = allStats.filter((s) => s.season === team.season);
+  const currentSeasonStats = allStats.filter((s) => s.season === season);
 
-  const season = players.map((p) => ({
+  const seasonRows = players.map((p) => ({
     player: p,
     totals: derive(currentSeasonStats.find((s) => s.player_id === p.id) || emptyForPlayer()),
   }));
-  const qualified = season.filter((s) => s.totals.AB >= 2);
+  const qualified = seasonRows.filter((s) => s.totals.AB >= 2);
 
   const teamTotals = aggregate(currentSeasonStats);
 
@@ -76,15 +68,18 @@ export default function Home() {
   const boards = [
     { title: 'AVG Leaders', key: 'AVG', rate: true, list: qualified },
     { title: 'OPS Leaders', key: 'OPS', rate: true, list: qualified },
-    { title: 'Hits Leaders', key: 'H', rate: false, list: season },
-    { title: 'RBI Leaders', key: 'RBI', rate: false, list: season },
+    { title: 'Hits Leaders', key: 'H', rate: false, list: seasonRows },
+    { title: 'RBI Leaders', key: 'RBI', rate: false, list: seasonRows },
   ];
 
   return (
     <>
       <section className="hero">
         <div className="container">
-          <p className="eyebrow">{team.name} · {team.season} SEASON</p>
+          <div className="section-head" style={{ marginBottom: '.6rem' }}>
+            <p className="eyebrow" style={{ margin: 0 }}>{team.name} · {season} SEASON</p>
+            <SeasonPicker season={season} seasons={seasons} onChange={setSeason} />
+          </div>
           <h1>
             International High School
             <br />
@@ -101,8 +96,8 @@ export default function Home() {
             <RecStat label="Roster" value={String(players.length)} />
           </div>
           <div className="hero-actions">
-            <Link className="btn btn-accent" to="/players">View Players</Link>
-            <Link className="btn btn-ghost" to="/games">Schedule &amp; Results</Link>
+            <Link className="btn btn-accent" to={`/schools/${team.slug}/players`}>View Players</Link>
+            <Link className="btn btn-ghost" to={`/schools/${team.slug}/games`}>Schedule &amp; Results</Link>
           </div>
         </div>
       </section>
@@ -149,12 +144,12 @@ export default function Home() {
               <p className="eyebrow">Schedule</p>
               <h2>Recent Games</h2>
             </div>
-            <Link className="btn btn-ghost btn-sm" to="/games">View All</Link>
+            <Link className="btn btn-ghost btn-sm" to={`/schools/${team.slug}/games`}>View All</Link>
           </div>
           {recent.length ? (
             <Reveal className="card">
               {recent.map((g) => (
-                <Link key={g.id} to={`/games/${g.id}`} className="game-row row-link">
+                <Link key={g.id} to={`/schools/${team.slug}/games/${g.id}`} className="game-row row-link">
                   <span className="g-date num">{g.date}</span>
                   <div>
                     <div className="g-opp">vs {g.opponent}</div>
@@ -182,7 +177,7 @@ export default function Home() {
               <p className="eyebrow">Leaders</p>
               <h2>Season Top Performers</h2>
             </div>
-            <Link className="btn btn-ghost btn-sm" to="/leaderboards">Full Leaderboard</Link>
+            <Link className="btn btn-ghost btn-sm" to={`/schools/${team.slug}/leaderboards`}>Full Leaderboard</Link>
           </div>
           <div className="grid cols-2">
             {boards.map((b, i) => (

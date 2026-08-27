@@ -1,7 +1,10 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Outlet } from 'react-router-dom';
 import Nav from './components/Nav';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
+import { AdminSchoolProvider } from './context/AdminSchoolContext';
+import LeagueHome from './pages/LeagueHome';
+import SchoolLayout from './pages/SchoolLayout';
 import Home from './pages/Home';
 import Players from './pages/Players';
 import PlayerDetail from './pages/PlayerDetail';
@@ -21,53 +24,32 @@ export default function App() {
       <Nav />
       <main id="main">
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/players" element={<Players />} />
-          <Route path="/players/:id" element={<PlayerDetail />} />
-          <Route path="/games" element={<Games />} />
-          <Route path="/games/:id" element={<GameDetail />} />
-          <Route path="/leaderboards" element={<Leaderboards />} />
+          <Route path="/" element={<LeagueHome />} />
+          <Route path="/schools/:slug" element={<SchoolLayout />}>
+            <Route index element={<Home />} />
+            <Route path="players" element={<Players />} />
+            <Route path="players/:id" element={<PlayerDetail />} />
+            <Route path="games" element={<Games />} />
+            <Route path="games/:id" element={<GameDetail />} />
+            <Route path="leaderboards" element={<Leaderboards />} />
+          </Route>
           <Route path="/login" element={<Login />} />
           <Route
             path="/admin"
             element={
               <ProtectedRoute>
-                <AdminHome />
+                <AdminSchoolProvider>
+                  <Outlet />
+                </AdminSchoolProvider>
               </ProtectedRoute>
             }
-          />
-          <Route
-            path="/admin/season"
-            element={
-              <ProtectedRoute>
-                <AdminSeason />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/team"
-            element={
-              <ProtectedRoute>
-                <AdminTeam />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/players"
-            element={
-              <ProtectedRoute>
-                <AdminPlayers />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/games"
-            element={
-              <ProtectedRoute>
-                <AdminGames />
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route index element={<AdminHome />} />
+            <Route path="season" element={<AdminSeason />} />
+            <Route path="team" element={<AdminTeam />} />
+            <Route path="players" element={<AdminPlayers />} />
+            <Route path="games" element={<AdminGames />} />
+          </Route>
         </Routes>
       </main>
       <Footer />

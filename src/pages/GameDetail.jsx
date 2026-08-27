@@ -8,7 +8,7 @@ import Reveal from '../components/Reveal';
 import Avatar from '../components/Avatar';
 
 export default function GameDetail() {
-  const { id } = useParams();
+  const { id, slug } = useParams();
   const navigate = useNavigate();
   const [state, setState] = useState({ loading: true });
 
@@ -37,7 +37,7 @@ export default function GameDetail() {
   if (state.error || !state.game) {
     return (
       <div className="container section">
-        <Empty message="Game not found." cta={{ to: '/games', label: 'Back to Games' }} />
+        <Empty message="Game not found." cta={{ to: `/schools/${slug}/games`, label: 'Back to Games' }} />
       </div>
     );
   }
@@ -45,7 +45,7 @@ export default function GameDetail() {
   const { game, boxScore, boxScoreError } = state;
   return (
     <div className="container section">
-      <Link className="backlink" to="/games">← Games</Link>
+      <Link className="backlink" to={`/schools/${slug}/games`}>← Games</Link>
       <Reveal className="pd-hero">
         <div className="pd-info">
           <div className="pd-name-en">{game.event_name || 'Game'}</div>
@@ -86,7 +86,7 @@ export default function GameDetail() {
               </thead>
               <tbody>
                 {boxScore.map((row) => (
-                  <tr key={row.id} className="row-link" onClick={() => navigate(`/players/${row.players.id}`)}>
+                  <tr key={row.id} className="row-link" onClick={() => navigate(`/schools/${slug}/players/${row.players.id}`)}>
                     <td className="left name-cell">
                       <Avatar player={row.players} size="xs" />
                       <span>{row.players.name_en || row.players.name}</span>

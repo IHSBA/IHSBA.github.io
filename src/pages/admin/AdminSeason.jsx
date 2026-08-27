@@ -1,31 +1,37 @@
 import { useEffect, useState } from 'react';
-import { getTeam, upsertTeam, getDistinctSeasons } from '../../lib/api';
+import { getTeam, upsertTeam, getDistinctSeasons, copyRosterToSeason } from '../../lib/api';
+import { useAdminSchool } from '../../context/AdminSchoolContext';
 import AdminLayout from './AdminLayout';
 
 // The "active season" is just teams.season -- Home/Players/Leaderboards
-// already read it to decide what counts as "this season". Switching it
-// here changes what the public site shows as current, and pre-fills the
-// season field when adding new games in the Games tab.
+// default their season picker to it. Switching it here changes what the
+// public site shows as current, and pre-fills the season field when
+// adding new games in the Games tab.
 export default function AdminSeason() {
+  const { teamId } = useAdminSchool();
   const [team, setTeam] = useState(null);
   const [seasons, setSeasons] = useState([]);
   const [picked, setPicked] = useState('');
   const [newSeason, setNewSeason] = useState('');
+  const [copyRoster, setCopyRoster] = useState(true);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
 
   async function refresh() {
-    const t = await getTeam();
-    setTeam(t);
-    if (t) {
-      setPicked(t.season);
-      setSeasons(await getDistinctSeasons(t.id, t.season));
+    if (!teamId) {
+      setTeam(null);
+      return;
     }
+    const t = await getTeam(teamId);
+    setTeam(t);
+    setPicked(t.season);
+    setSeasons(await getDistinctSeasons(t.id, t.season));
   }
 
   useEffect(() => {
     refresh();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId]);
 
   async function switchTo(season) {
     if (!team || !season) return;
@@ -45,10 +51,19 @@ export default function AdminSeason() {
 
   async function handleAdd(e) {
     e.preventDefault();
-    if (!newSeason.trim()) return;
-    await switchTo(newSeason.trim());
+    const target = newSeason.trim();
+    if (!target || !team) return;
+    const fromSeason = team.season;
+    await switchTo(target);
+    if (copyRoster && fromSeason && fromSeason !== target) {
+      try {
+        await copyRosterToSeason(team.id, fromSeason, target);
+      } catch (err) {
+        setMsg({ type: 'err', text: `Season created, but roster copy failed: ${err.message}` });
+      }
+    }
     setNewSeason('');
-    if (team) setSeasons(await getDistinctSeasons(team.id, newSeason.trim()));
+    setSeasons(await getDistinctSeasons(team.id, target));
   }
 
   return (
@@ -96,6 +111,10 @@ export default function AdminSeason() {
                 onChange={(e) => setNewSeason(e.target.value)}
               />
             </div>
+            <label className="muted" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.85rem' }}>
+              <input type="checkbox" checked={copyRoster} onChange={(e) => setCopyRoster(e.target.checked)} />
+              Copy current roster ({team.season}) into this season
+            </label>
             <div className="form-actions">
               <button className="btn btn-primary" type="submit" disabled={busy || !newSeason.trim()}>
                 Add &amp; Switch

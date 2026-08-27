@@ -31,9 +31,9 @@
   --loss: #ff5d5d;
   --tie: #ffc83a;
 
-  --font-body: 'Noto Sans KR', system-ui, -apple-system, sans-serif;
-  --font-disp: 'Archivo', 'Noto Sans KR', system-ui, sans-serif;
-  --font-num: 'Oswald', 'Archivo', system-ui, sans-serif;
+  --font-body: 'Inter', 'Noto Sans KR', system-ui, -apple-system, sans-serif;
+  --font-disp: 'Inter', 'Noto Sans KR', system-ui, sans-serif;
+  --font-num: 'Inter', 'Noto Sans KR', system-ui, sans-serif;
 
   --r-sm: 8px;
   --r-md: 14px;
@@ -268,6 +268,13 @@ table.stats.major td.div-cell, table.stats.major th.div-cell { text-align: left;
 .avatar-lg { width: 130px; height: 160px; border-radius: var(--r-md); }
 .avatar-sm { width: 38px; height: 38px; border-radius: 9px; font-size: 0.85rem; }
 .avatar-xs { width: 26px; height: 26px; border-radius: 7px; font-size: 0.6rem; flex: none; }
+
+/* league home: school cards */
+.school-card { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; text-decoration: none; transition: transform 0.18s, border-color 0.18s; }
+.school-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+.school-card-avatar { width: 48px; height: 48px; border-radius: 10px; font-size: 1.1rem; }
+.school-card-name { font-family: var(--font-disp); font-weight: 800; font-size: 1.1rem; color: var(--text); }
+.school-card-season { font-size: 0.85rem; }
 
 /* ---- 11. FORMS --------------------------------------------------- */
 .form-grid { display: grid; gap: 1rem; }
