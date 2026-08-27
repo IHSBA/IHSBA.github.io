@@ -31,8 +31,18 @@ export async function getTeams() {
   return data;
 }
 
+// Partial patches (e.g. AdminSeason only sending { id, season }) must go
+// through a real UPDATE, not .upsert() -- Postgres validates the full
+// candidate row against NOT NULL constraints before it even checks for
+// a conflict, so an upsert missing `name` fails even on an existing row.
 export async function upsertTeam(team) {
-  const { data, error } = await supabase.from('teams').upsert(team).select().single();
+  if (team.id) {
+    const { id, ...patch } = team;
+    const { data, error } = await supabase.from('teams').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const { data, error } = await supabase.from('teams').insert(team).select().single();
   if (error) throw error;
   return data;
 }
